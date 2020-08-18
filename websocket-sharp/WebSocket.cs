@@ -120,6 +120,9 @@ namespace WebSocketSharp
     private const string                   _version = "13";
     private TimeSpan                       _waitTime;
 
+    private volatile int                   _connectionTimeout = 20000;
+
+
     #endregion
 
     #region Internal Fields
@@ -329,6 +332,21 @@ namespace WebSocketSharp
     #endregion
 
     #region Public Properties
+
+    /// <summary>
+    /// Connection timeout (mls)
+    /// </summary>
+    public int ConnectionTimeout
+    {
+        get
+        {
+            return _connectionTimeout;
+        }
+        set
+        {
+            _connectionTimeout = value;
+        }
+    }
 
     /// <summary>
     /// Gets or sets the compression method used to compress a message.
@@ -1992,7 +2010,7 @@ namespace WebSocketSharp
     private HttpResponse sendHandshakeRequest ()
     {
       var req = createHandshakeRequest ();
-      var res = sendHttpRequest (req, 90000);
+      var res = sendHttpRequest (req, _connectionTimeout);
       if (res.IsUnauthorized) {
         var chal = res.Headers["WWW-Authenticate"];
         _logger.Warn (String.Format ("Received an authentication requirement for '{0}'.", chal));
@@ -2076,7 +2094,7 @@ namespace WebSocketSharp
     private void sendProxyConnectRequest ()
     {
       var req = HttpRequest.CreateConnectRequest (_uri);
-      var res = sendHttpRequest (req, 90000);
+      var res = sendHttpRequest (req, _connectionTimeout);
       if (res.IsProxyAuthenticationRequired) {
         var chal = res.Headers["Proxy-Authenticate"];
         _logger.Warn (
