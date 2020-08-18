@@ -312,6 +312,16 @@ namespace WebSocketSharp.Server
     #region Public Properties
 
     /// <summary>
+    /// Gets server listener
+    /// </summary>
+    public TcpListener Listener
+    {
+        get
+        {
+            return _listener;
+        }
+    }
+    /// <summary>
     /// Gets the IP address of the server.
     /// </summary>
     /// <value>
@@ -787,6 +797,7 @@ namespace WebSocketSharp.Server
       return _sslConfig;
     }
 
+    
     private void init (
       string hostname, System.Net.IPAddress address, int port, bool secure
     )
@@ -799,6 +810,9 @@ namespace WebSocketSharp.Server
       _authSchemes = AuthenticationSchemes.Anonymous;
       _dnsStyle = Uri.CheckHostName (hostname) == UriHostNameType.Dns;
       _listener = new TcpListener (address, port);
+
+      
+
       _log = new Logger ();
       _services = new WebSocketServiceManager (_log);
       _sync = new object ();
