@@ -120,17 +120,19 @@ namespace WebSocketSharp
     private const string                   _version = "13";
     private TimeSpan                       _waitTime;
 
-    private volatile int                   _connectionTimeout = 20000;
+    private volatile int                   _connectionTimeout = 3000;
+    private volatile int                   _readTimeout = 3000;
+    private volatile int                   _writeTimeout = 3000;
 
 
-    #endregion
+        #endregion
 
-    #region Internal Fields
+        #region Internal Fields
 
-    /// <summary>
-    /// Represents the empty array of <see cref="byte"/> used internally.
-    /// </summary>
-    internal static readonly byte[] EmptyBytes;
+        /// <summary>
+        /// Represents the empty array of <see cref="byte"/> used internally.
+        /// </summary>
+        internal static readonly byte[] EmptyBytes;
 
     /// <summary>
     /// Represents the length used to determine whether the data should be fragmented in sending.
@@ -279,7 +281,7 @@ namespace WebSocketSharp
       _logger = new Logger ();
       _message = messagec;
       _secure = _uri.Scheme == "wss";
-      _waitTime = TimeSpan.FromSeconds (5);
+      _waitTime = TimeSpan.FromSeconds (1);
 
       init ();
     }
@@ -349,27 +351,57 @@ namespace WebSocketSharp
     }
 
     /// <summary>
-    /// Gets or sets the compression method used to compress a message.
+    /// Read timeout (mls)
     /// </summary>
-    /// <remarks>
-    /// The set operation does nothing if the connection has already been
-    /// established or it is closing.
-    /// </remarks>
-    /// <value>
-    ///   <para>
-    ///   One of the <see cref="CompressionMethod"/> enum values.
-    ///   </para>
-    ///   <para>
-    ///   It specifies the compression method used to compress a message.
-    ///   </para>
-    ///   <para>
-    ///   The default value is <see cref="CompressionMethod.None"/>.
-    ///   </para>
-    /// </value>
-    /// <exception cref="InvalidOperationException">
-    /// The set operation is not available if this instance is not a client.
-    /// </exception>
-    public CompressionMethod Compression {
+    public int ReadTimeout
+    {
+        get
+        {
+            return _readTimeout;
+        }
+        set
+        {
+            _readTimeout = value;
+        }
+    }
+
+    /// <summary>
+    /// Write timeout (mls)
+    /// </summary>
+    public int WriteTimeout
+    {
+        get
+        {
+            return _writeTimeout;
+        }
+        set
+        {
+            _writeTimeout = value;
+        }
+    }
+
+        /// <summary>
+        /// Gets or sets the compression method used to compress a message.
+        /// </summary>
+        /// <remarks>
+        /// The set operation does nothing if the connection has already been
+        /// established or it is closing.
+        /// </remarks>
+        /// <value>
+        ///   <para>
+        ///   One of the <see cref="CompressionMethod"/> enum values.
+        ///   </para>
+        ///   <para>
+        ///   It specifies the compression method used to compress a message.
+        ///   </para>
+        ///   <para>
+        ///   The default value is <see cref="CompressionMethod.None"/>.
+        ///   </para>
+        /// </value>
+        /// <exception cref="InvalidOperationException">
+        /// The set operation is not available if this instance is not a client.
+        /// </exception>
+        public CompressionMethod Compression {
       get {
         return _compression;
       }
@@ -2010,7 +2042,7 @@ namespace WebSocketSharp
     private HttpResponse sendHandshakeRequest ()
     {
       var req = createHandshakeRequest ();
-      var res = sendHttpRequest (req, _connectionTimeout);
+      var res = sendHttpRequest (req, ConnectionTimeout);
       if (res.IsUnauthorized) {
         var chal = res.Headers["WWW-Authenticate"];
         _logger.Warn (String.Format ("Received an authentication requirement for '{0}'.", chal));
@@ -2035,7 +2067,7 @@ namespace WebSocketSharp
           var authRes = new AuthenticationResponse (_authChallenge, _credentials, _nonceCount);
           _nonceCount = authRes.NonceCount;
           req.Headers["Authorization"] = authRes.ToString ();
-          res = sendHttpRequest (req, 15000);
+          res = sendHttpRequest (req, ConnectionTimeout);
         }
       }
 
@@ -2094,7 +2126,7 @@ namespace WebSocketSharp
     private void sendProxyConnectRequest ()
     {
       var req = HttpRequest.CreateConnectRequest (_uri);
-      var res = sendHttpRequest (req, _connectionTimeout);
+      var res = sendHttpRequest (req, ConnectionTimeout);
       if (res.IsProxyAuthenticationRequired) {
         var chal = res.Headers["Proxy-Authenticate"];
         _logger.Warn (
@@ -2114,9 +2146,12 @@ namespace WebSocketSharp
             _stream = _tcpClient.GetStream ();
           }
 
+          _stream.WriteTimeout = this.WriteTimeout;
+          _stream.ReadTimeout = this.ReadTimeout;
+
           var authRes = new AuthenticationResponse (authChal, _proxyCredentials, 0);
           req.Headers["Proxy-Authorization"] = authRes.ToString ();
-          res = sendHttpRequest (req, 15000);
+          res = sendHttpRequest (req, ConnectionTimeout);
         }
 
         if (res.IsProxyAuthenticationRequired)
@@ -2133,15 +2168,19 @@ namespace WebSocketSharp
     {
       if (_proxyUri != null) {
         _tcpClient = new TcpClient (_proxyUri.DnsSafeHost, _proxyUri.Port);
-        _stream = _tcpClient.GetStream ();
-        sendProxyConnectRequest ();
+                
+                _stream = _tcpClient.GetStream ();
+                sendProxyConnectRequest ();
       }
       else {
         _tcpClient = new TcpClient (_uri.DnsSafeHost, _uri.Port);
         _stream = _tcpClient.GetStream ();
       }
 
-      if (_secure) {
+    _stream.WriteTimeout = this.WriteTimeout;
+    _stream.ReadTimeout = this.ReadTimeout;
+
+    if (_secure) {
         var conf = getSslConfiguration ();
         var host = conf.TargetHost;
         if (host != _uri.DnsSafeHost)
@@ -2161,6 +2200,8 @@ namespace WebSocketSharp
             conf.EnabledSslProtocols,
             conf.CheckCertificateRevocation);
 
+
+          
           _stream = sslStream;
         }
         catch (Exception ex) {

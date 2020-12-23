@@ -119,7 +119,7 @@ namespace WebSocketSharp.Net
       _localEndPoint = socket.LocalEndPoint;
       _remoteEndPoint = socket.RemoteEndPoint;
       _sync = new object ();
-      _timeout = 90000; // 90k ms for first request, 15k ms from then on.
+      _timeout = 10000; // 90k ms for first request, 15k ms from then on.
       _timeoutCanceled = new Dictionary<int, bool> ();
       _timer = new Timer (onTimeout, this, Timeout.Infinite, Timeout.Infinite);
 
@@ -491,7 +491,7 @@ namespace WebSocketSharp.Net
         _buffer = new byte[_bufferLength];
 
       if (_reuses == 1)
-        _timeout = 15000;
+        _timeout = 5000;
 
       try {
         _timeoutCanceled.Add (_reuses, false);
